@@ -13,7 +13,7 @@ class PngChunk(object):
         self._file = file
         self._length = self.__read_length()
         self._type = self.__read_type()
-        self._uncoded_data = self.__read_data()
+        self._byte_data = self.__read_data()
         self._crc = self.__calculate_crc()
 
         self._data = {}
@@ -82,43 +82,43 @@ class PngChunkIHDR(PngChunk):
 
     @property
     def width(self) -> int:
-        width = int.from_bytes(self._uncoded_data[:4], "big")
+        width = int.from_bytes(self._byte_data[:4], "big")
         logging.debug("Width %d", width)
         return width
 
     @property
     def length(self) -> int:
-        length = int.from_bytes(self._uncoded_data[4:8], "big")
+        length = int.from_bytes(self._byte_data[4:8], "big")
         logging.debug("length %d", length)
         return length
 
     @property
     def bit_depth(self) -> int:
-        bit_depth = self._uncoded_data[9]
+        bit_depth = self._byte_data[9]
         logging.debug("bit_depth %d", bit_depth)
         return bit_depth
 
     @property
     def color_type(self) -> int:
-        color = self._uncoded_data[10]
+        color = self._byte_data[10]
         logging.debug("color type %d", color)
         return color
 
     @property
     def compression_method(self) -> int:
-        compression = self._uncoded_data[11]
+        compression = self._byte_data[11]
         logging.debug("Compression method %d", compression)
         return compression
 
     @property
     def filter_method(self) -> int:
-        filter_method = self._uncoded_data[11]
+        filter_method = self._byte_data[11]
         logging.debug("Filter method %d", filter_method)
         return filter_method
 
     @property
     def interlace_method(self) -> int:
-        interlace_method = self._uncoded_data[11]
+        interlace_method = self._byte_data[11]
         logging.debug("Interlace method %d", interlace_method)
         return interlace_method
 
@@ -151,7 +151,7 @@ class PngChunkgAMA(PngChunk):
 
     @property
     def gamma(self) -> float:
-        gamma = int.from_bytes(self._uncoded_data, "big")
+        gamma = int.from_bytes(self._byte_data, "big")
         logging.debug("Gamma %f", gamma / 100000.0)
         return gamma / 100000.0
 
@@ -178,7 +178,7 @@ class PngChunksRGB(PngChunk):
 
     @property
     def rendering_intent_value(self) -> int:
-        rendering_intent = int.from_bytes(self._uncoded_data, "big")
+        rendering_intent = int.from_bytes(self._byte_data, "big")
         logging.debug("Rendering intent %d -> %s",
                         rendering_intent,
                         self.RENDERING_INTENT_DEF[rendering_intent])
@@ -192,3 +192,13 @@ class PngChunksRGB(PngChunk):
         data_dict["rendering_intent"] = self.rendering_intent_string
 
 
+class PngChunktEXt(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        data = self._byte_data.decode().split('\0')
+        data_dict["keyword"] = data[0]
+        data_dict["text"] = data[1]
+        logging.debug("Keyword %s", data[0])
+        logging.debug("Text %s", data[1])
