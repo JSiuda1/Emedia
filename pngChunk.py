@@ -6,6 +6,7 @@ CHUNK_LENGTH_SIZE = 4
 CHUNK_TYPE_SIZE = 4
 CHUNK_CRC_SIZE = 4
 
+
 class PngChunk(object):
     def __init__(self, file: io.BufferedReader) -> None:
         logging.debug(f"{bcolors.HEADER}{bcolors.BOLD}New chunk:{bcolors.ENDC}")
@@ -133,10 +134,6 @@ class PngChunkIHDR(PngChunk):
         data_dict["interlace_method"] = self.interlace_method
 
 
-# class PngChunkIDAT(PngChunk):
-#     pass
-
-
 class PngChunkIEND(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
@@ -158,12 +155,6 @@ class PngChunkgAMA(PngChunk):
     def _parse_data(self, data_dict: dict):
         data_dict["gamma"] = self.gamma
 
-class PngChunktEXt(PngChunk):
-    def __init__(self, file: io.BufferedReader) -> None:
-        super().__init__(file)
-
-    def _parse_data(self, data_dict: dict):
-        pass
 
 class PngChunksRGB(PngChunk):
     RENDERING_INTENT_DEF = {
@@ -202,3 +193,139 @@ class PngChunktEXt(PngChunk):
         data_dict["text"] = data[1]
         logging.debug("Keyword %s", data[0])
         logging.debug("Text %s", data[1])
+
+
+
+class PngChunkcHRM(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        # value times 100000
+        white_point_x = int.from_bytes(self._byte_data[:4], "big")
+        white_point_y = int.from_bytes(self._byte_data[5:8], "big")
+        red_x = int.from_bytes(self._byte_data[9:12], "big")
+        red_y = int.from_bytes(self._byte_data[13:16], "big")
+        green_x = int.from_bytes(self._byte_data[17:20], "big")
+        green_y = int.from_bytes(self._byte_data[21:24], "big")
+        blue_x = int.from_bytes(self._byte_data[25:28], "big")
+        blue_y = int.from_bytes(self._byte_data[29:32], "big")
+        logging.debug("White point x = %s", white_point_x/100000)
+        logging.debug("White point y = %s", white_point_y / 100000)
+        logging.debug("Red x = %s", red_x / 100000)
+        logging.debug("Red y = %s", red_y / 100000)
+        logging.debug("Green x = %s", green_x / 100000)
+        logging.debug("Green y = %s", green_y / 100000)
+        logging.debug("Blue x = %s", blue_x / 100000)
+        logging.debug("Blue y = %s", blue_y / 100000)
+
+
+class PngChunkbKGD(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        palette_index = int.from_bytes(self._byte_data[:1], "big")
+        logging.debug("White point x = %s", palette_index)
+
+
+# data to filter and compress
+#class PngChunkIDAT(PngChunk):
+#    pass
+
+
+# 2 byte data series of each frequency
+# tutaj trzebaby jakąś pętlę zrobić
+class PngChunkhIST(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        freq = int.from_bytes(self._byte_data[:3], "big")
+        logging.debug("Frequency 1 = %s", freq)
+
+
+# image offset
+class PngChunkoFFs(PngChunk):
+    UNIT_SPECIFIER = {
+        0 : "pixel",
+        1 : "micrometer"
+    }
+
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        position_x = int.from_bytes(self._byte_data[:4], "big")
+        position_y = int.from_bytes(self._byte_data[5:8], "big")
+        unit = self._byte_data[8]
+        logging.debug("Position x = %s", position_x)
+        logging.debug("Position y = %s", position_y)
+        logging.debug("Unit is the %s",
+                      self.UNIT_SPECIFIER[unit])
+
+
+class PngChunkpHYs(PngChunk):
+    UNIT_SPECIFIER = {
+        0 : "unknown",
+        1 : "meter"
+    }
+
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+# pixels per unit
+    def _parse_data(self, data_dict: dict):
+        pixels_pu_x = int.from_bytes(self._byte_data[:4], "big")
+        pixels_pu_y = int.from_bytes(self._byte_data[5:8], "big")
+        unit = self._byte_data[8]
+        logging.debug("Position x = %s", pixels_pu_x)
+        logging.debug("Position y = %s", pixels_pu_y)
+        logging.debug("Unit is the %s",
+                      self.UNIT_SPECIFIER[unit])
+
+
+#class PngChunksBIT(PngChunk):
+
+
+#class PngChunksPLT(PngChunk):
+
+
+class PngChunksTER(PngChunk):
+    LAYOUT_TYPE = {
+        0 : "cross-fuse layout",
+        1 : "diverging-fuse layout"
+    }
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        layout_type = self._byte_data[0]
+        logging.debug("Layout type is the %s",
+                      self.LAYOUT_TYPE[layout_type])
+
+
+class PngChunktIME(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        year = int.from_bytes(self._byte_data[:2], "big")
+        month = self._byte_data[2]
+        day = self._byte_data[3]
+        hour = self._byte_data[4]
+        minute = self._byte_data[5]
+        second = self._byte_data[6]
+        logging.debug("year %s", year)
+        logging.debug("month %s", month)
+        logging.debug("day %s", day)
+        logging.debug("hour %s", hour)
+        logging.debug("minute %s", minute)
+        logging.debug("second %s", second)
+
+#class PngChunktRNS(PngChunk):
+
+
+# compressed equivalent of tEXt
+# class PngChunkzTXt(PngChunk):
+

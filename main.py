@@ -3,4 +3,4 @@ import logging
 
 if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
-    x = PngFile("png/land.png")
+    x = PngFile("png/ztxt.png")
