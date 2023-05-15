@@ -74,6 +74,18 @@ class PngChunk(object):
     def type(self):
         return self._type
 
+    @property
+    def length(self):
+        return self._length
+
+    @property
+    def byte_data(self):
+        return self._byte_data
+
+    @property
+    def data(self):
+        return self._data
+
 
 class PngChunkIHDR(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
