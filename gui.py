@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QScrollArea
-from PyQt6.QtWidgets import QWidget, QTabWidget, QGroupBox, QMessageBox
+from PyQt6.QtWidgets import QWidget, QTabWidget, QGroupBox, QMessageBox, QCheckBox
 from PyQt6.QtWidgets import QLineEdit, QPushButton, QFileDialog, QTextEdit, QFormLayout
 from PyQt6.QtGui import QCloseEvent ,QPixmap
 from PyQt6.QtCore import QSize, Qt
@@ -50,6 +50,12 @@ class MainWindow(QWidget):
         self.save_file_button.setDisabled(True)
         self.save_file_button.clicked.connect(self.saveImage)
         layout.addWidget(self.save_file_button, 0, 4)
+
+        self.save_check_box_ancillary = QCheckBox("Remove ancillary chunks")
+        layout.addWidget(self.save_check_box_ancillary, 1, 0, 1, 2)
+
+        # self.save_text_status = QLabel("Test")
+        # layout.addWidget(self.save_text_status, 1, 4)
 
         box.setLayout(layout)
 
@@ -123,16 +129,12 @@ class MainWindow(QWidget):
         scroll.setWidget(groupBox)
         scroll.setWidgetResizable(True)
         return scroll
-        # # layout = QVBoxLayout(self)
-        # # layout.addWidget(scroll)
-        # # return layout
 
     def _updateImgae(self, img_file):
         """Update image in file layout"""
         im = QPixmap(img_file)
-        high_rez = QSize(600, 600)
+        high_rez = QSize(550, 550)
 
-        # self.image_label(im)
         im = im.scaled(high_rez)
         self.image_label.setPixmap(im)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
@@ -144,25 +146,46 @@ class MainWindow(QWidget):
         fname = QFileDialog.getOpenFileName(directory=home_dir)
 
         if not fname[0]:
-            logging.error("error")
             return
 
         if fname[0].endswith(".png") is not True:
             logging.error("Invalid file format")
+            QMessageBox.warning(self, "Invalid file format", "File should end with .png")
             return
 
         self.path_to_file.clear()
         self.path_to_file.insert(fname[0])
         logging.info(f"File {fname[0]}")
+
         self._updateImgae(fname[0])
-        self.png_file = PngFile(fname[0])
+        try:
+            self.png_file = PngFile(fname[0])
+        except Exception:
+            QMessageBox.critical(self, "Error", "Error during file encoding")
+            return
+
+
         self.tabwidget.removeTab(1)
         self.save_file_button.setDisabled(False)
-
         self.tabwidget.addTab(self._chunksLayout(self.png_file), "Chunks")
 
         self.save_file_button.setEnabled(True)
 
+    def _save_only_critical_chunks(self, file):
+            for chunk in self.png_file.chunks:
+                if chunk.is_critical() is True:
+                    file.write(chunk.create_chunk())
+
+    def _save_choosen_chunks(self, file):
+        itter = 0
+        for chunk in self.png_file.chunks:
+            if chunk.is_critical() is True:
+                file.write(chunk.create_chunk())
+            else:
+                if self.list_of_chunk_box[itter].isChecked():
+                    file.write(chunk.create_chunk())
+
+            itter += 1
 
     def saveImage(self):
         """On save image button"""
@@ -182,15 +205,11 @@ class MainWindow(QWidget):
 
         file = open(path, "wb")
         file.write(self.png_file.HEADER)
-        itter = 0
-        for chunk in self.png_file.chunks:
-            if chunk.is_critical() is True:
-                file.write(chunk.create_chunk())
-            else:
-                if self.list_of_chunk_box[itter].isChecked():
-                    file.write(chunk.create_chunk())
 
-            itter += 1
+        if self.save_check_box_ancillary.isChecked() is True:
+            self._save_only_critical_chunks(file)
+        else:
+            self._save_choosen_chunks(file)
 
         file.close()
 
