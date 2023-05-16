@@ -60,22 +60,34 @@ class PngChunk(object):
         logging.debug("Data %s...", data[:40])
         return data
 
-    def __calculate_crc(self):
+    def __calculate_crc(self) -> int:
         """Calculate chunk crc
         """
         crc = int.from_bytes(self._file.read(CHUNK_CRC_SIZE), "big")
         logging.debug("CRC: %d", crc)
+        return crc
 
     def _parse_data(self, data_dict: dict):
         """Parse chunk data"""
         raise NotImplementedError
+
+    def is_critical(self) -> bytes:
+        return self._type[0].isupper()
+
+    def create_chunk(self):
+        length_byte = self._length.to_bytes(4, 'big')
+        type_byte = str.encode(self._type)
+        crc_byte = self._crc.to_bytes(4, 'big')
+
+        chunk_byte = length_byte + type_byte + self._byte_data + crc_byte
+        return chunk_byte
 
     @property
     def type(self):
         return self._type
 
     @property
-    def length(self):
+    def chunk_length(self):
         return self._length
 
     @property
@@ -85,6 +97,7 @@ class PngChunk(object):
     @property
     def data(self):
         return self._data
+
 
 
 class PngChunkIHDR(PngChunk):

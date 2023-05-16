@@ -1,12 +1,12 @@
 import logging
 
-import pngChunk as chunk
+from pngChunk import PngChunk
 
 class PngFile(object):
     HEADER = b'\x89PNG\r\n\x1a\n'
     def __init__(self, file_path) -> None:
         self.file = open(file_path, "br")
-        self.chunks = []
+        self._chunks = []
 
         self.__check_header()
         self.__load_chunks()
@@ -22,6 +22,10 @@ class PngFile(object):
         return header
 
     def __load_chunks(self):
-        self.chunks.append(chunk.PngChunk(self.file))
-        while self.chunks[-1].type != "IEND":
-            self.chunks.append(chunk.PngChunk(self.file))
+        self._chunks.append(PngChunk(self.file))
+        while self._chunks[-1].type != "IEND":
+            self._chunks.append(PngChunk(self.file))
+
+    @property
+    def chunks(self):
+        return self._chunks
