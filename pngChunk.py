@@ -134,6 +134,9 @@ class PngChunkIHDR(PngChunk):
         data_dict["interlace_method"] = self.interlace_method
 
 
+
+
+
 class PngChunkIEND(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
@@ -210,6 +213,16 @@ class PngChunkcHRM(PngChunk):
         green_y = int.from_bytes(self._byte_data[21:24], "big")
         blue_x = int.from_bytes(self._byte_data[25:28], "big")
         blue_y = int.from_bytes(self._byte_data[29:32], "big")
+
+        data_dict["White point x"] = white_point_x/100000
+        data_dict["White point y"] = white_point_y/100000
+        data_dict["Red x"] = red_x/100000
+        data_dict["Red y"] = red_y/100000
+        data_dict["Green x"] = green_x/100000
+        data_dict["Green y"] = green_y/100000
+        data_dict["Blue x"] = blue_x/100000
+        data_dict["Blue y"] = blue_y/100000
+
         logging.debug("White point x = %s", white_point_x/100000)
         logging.debug("White point y = %s", white_point_y / 100000)
         logging.debug("Red x = %s", red_x / 100000)
@@ -226,6 +239,10 @@ class PngChunkbKGD(PngChunk):
 
     def _parse_data(self, data_dict: dict):
         palette_index = int.from_bytes(self._byte_data[:1], "big")
+
+        data_dict["palette index"] = palette_index
+
+      #  if self.color_type
         logging.debug("White point x = %s", palette_index)
 
 
@@ -242,6 +259,7 @@ class PngChunkhIST(PngChunk):
 
     def _parse_data(self, data_dict: dict):
         freq = int.from_bytes(self._byte_data[:3], "big")
+        data_dict["Frequency 1"] = freq
         logging.debug("Frequency 1 = %s", freq)
 
 
@@ -259,6 +277,11 @@ class PngChunkoFFs(PngChunk):
         position_x = int.from_bytes(self._byte_data[:4], "big")
         position_y = int.from_bytes(self._byte_data[5:8], "big")
         unit = self._byte_data[8]
+
+        data_dict["Position x"] = position_x
+        data_dict["Position y"] = position_y
+        data_dict["Unit"] = unit
+
         logging.debug("Position x = %s", position_x)
         logging.debug("Position y = %s", position_y)
         logging.debug("Unit is the %s",
@@ -279,6 +302,11 @@ class PngChunkpHYs(PngChunk):
         pixels_pu_x = int.from_bytes(self._byte_data[:4], "big")
         pixels_pu_y = int.from_bytes(self._byte_data[5:8], "big")
         unit = self._byte_data[8]
+
+        data_dict["Position x"] = pixels_pu_x
+        data_dict["Position y"] = pixels_pu_y
+        data_dict["Unit"] = unit
+
         logging.debug("Position x = %s", pixels_pu_x)
         logging.debug("Position y = %s", pixels_pu_y)
         logging.debug("Unit is the %s",
@@ -301,8 +329,12 @@ class PngChunksTER(PngChunk):
 
     def _parse_data(self, data_dict: dict):
         layout_type = self._byte_data[0]
+
+        data_dict["Layout type"] = layout_type
+
         logging.debug("Layout type is the %s",
                       self.LAYOUT_TYPE[layout_type])
+#        logging.debug("cos %d", data_dict["length"])
 
 
 class PngChunktIME(PngChunk):
@@ -316,6 +348,14 @@ class PngChunktIME(PngChunk):
         hour = self._byte_data[4]
         minute = self._byte_data[5]
         second = self._byte_data[6]
+
+        data_dict["year"] = year
+        data_dict["month"] = month
+        data_dict["day"] = day
+        data_dict["hour"] = hour
+        data_dict["minute"] = minute
+        data_dict["second"] = second
+
         logging.debug("year %s", year)
         logging.debug("month %s", month)
         logging.debug("day %s", day)
