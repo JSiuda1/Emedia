@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QLineEdit, QPushButton, QFileDialog, QTextEdit, QFor
 from PyQt6.QtGui import QCloseEvent ,QPixmap
 from PyQt6.QtCore import QSize, Qt
 from pngFile import PngFile
+import pyqtgraph as pg
 
 
 class MainWindow(QWidget):
@@ -32,6 +33,7 @@ class MainWindow(QWidget):
         self.tabwidget.addTab(test, "Image")
 
         self.tabwidget.addTab(self._chunksLayout(), "Chunks")
+        self.tabwidget.addTab(self._fftLayout(), "FFT")
 
         layout.addWidget(self.tabwidget, 0, 0)
         layout.addWidget(self._layoutSaveFile(), 1, 0)
@@ -130,6 +132,51 @@ class MainWindow(QWidget):
         scroll.setWidgetResizable(True)
         return scroll
 
+    def __createPlot(self, title: str, data: tuple):
+        graphWidget = pg.PlotWidget()
+
+        graphWidget.setLabel("left", "test")
+        graphWidget.setLabel("bottom", "Frequency", "Hz")
+        graphWidget.setTitle(title)
+        graphWidget.showGrid(True, True, 0.5)
+        graphWidget.setBackground((30, 30, 30))
+
+        if title.endswith("Green"):
+            color = (0, 255, 0)
+        elif title.endswith("Blue"):
+            color = (0, 0, 255)
+        else:
+            color = (255, 0, 0)
+
+        pen = pg.mkPen(color=color, width = 3)
+        graphWidget.plot(list(data[0]), list(data[1]), pen=pen)
+
+        return graphWidget
+
+    def _fftLayout(self, png_file : PngFile = None):
+        """Create chunks layout"""
+        formLayout = QVBoxLayout()
+        groupBox = QGroupBox()
+
+        self.list_of_chunk_box = []
+
+        if png_file is None:
+            label = QTextEdit("Image not loaded")
+            formLayout.addWidget(label)
+        else:
+            fft_list = self.png_file.get_fft()
+            fft_titles = ["FFT Red", "FFT Green", "FFT Blue"]
+            for i, fft_data in enumerate(fft_list):
+                fft_plot_widget = self.__createPlot(fft_titles[i], fft_data)
+                formLayout.addWidget(fft_plot_widget)
+
+        groupBox.setLayout(formLayout)
+
+        scroll = QScrollArea()
+        scroll.setWidget(groupBox)
+        scroll.setWidgetResizable(True)
+        return scroll
+
     def _updateImgae(self, img_file):
         """Update image in file layout"""
         im = QPixmap(img_file)
@@ -165,9 +212,11 @@ class MainWindow(QWidget):
             return
 
 
+        self.tabwidget.removeTab(2)
         self.tabwidget.removeTab(1)
         self.save_file_button.setDisabled(False)
         self.tabwidget.addTab(self._chunksLayout(self.png_file), "Chunks")
+        self.tabwidget.addTab(self._fftLayout(self.png_file), "FFT")
 
         self.save_file_button.setEnabled(True)
 

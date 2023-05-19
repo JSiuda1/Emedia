@@ -102,7 +102,6 @@ class PngChunk(object):
 
 class PngChunkIHDR(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
-        logging.debug("I am IHDR")
         super().__init__(file)
 
     @property
@@ -227,3 +226,16 @@ class PngChunktEXt(PngChunk):
         data_dict["text"] = data[1]
         logging.debug("Keyword %s", data[0])
         logging.debug("Text %s", data[1])
+
+
+class PngChunkIDAT(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        logging.info("Test")
+
+    def decode(self, color_type):
+        # dekodowanie
+        # zapisanie w pamieci
+        logging.info("odkodowywanie danych na podstawie koloru")
