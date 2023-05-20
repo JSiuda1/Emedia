@@ -25,6 +25,9 @@ class PngFile(object):
         self._chunks.append(PngChunk(self.file))
         while self._chunks[-1].type != "IEND":
             self._chunks.append(PngChunk(self.file))
+            if self._chunks[-1].type == "IDAT":
+                self._chunks[-1].decode(2)
+                print(self._chunks[-1].data["dupa"])
 
     def get_fft(self) -> list[tuple]:
         x = range(0, 30)

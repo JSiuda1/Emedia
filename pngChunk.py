@@ -237,5 +237,6 @@ class PngChunkIDAT(PngChunk):
 
     def decode(self, color_type):
         # dekodowanie
+        self._data["dupa"] = color_type
         # zapisanie w pamieci
         logging.info("odkodowywanie danych na podstawie koloru")
