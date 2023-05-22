@@ -6,7 +6,6 @@ CHUNK_LENGTH_SIZE = 4
 CHUNK_TYPE_SIZE = 4
 CHUNK_CRC_SIZE = 4
 
-
 class PngChunk(object):
     def __init__(self, file: io.BufferedReader) -> None:
         logging.debug(f"{bcolors.HEADER}{bcolors.BOLD}New chunk:{bcolors.ENDC}")
@@ -61,24 +60,48 @@ class PngChunk(object):
         logging.debug("Data %s...", data[:40])
         return data
 
-    def __calculate_crc(self):
+    def __calculate_crc(self) -> int:
         """Calculate chunk crc
         """
         crc = int.from_bytes(self._file.read(CHUNK_CRC_SIZE), "big")
         logging.debug("CRC: %d", crc)
+        return crc
 
     def _parse_data(self, data_dict: dict):
         """Parse chunk data"""
         raise NotImplementedError
 
+    def is_critical(self) -> bytes:
+        return self._type[0].isupper()
+
+    def create_chunk(self):
+        length_byte = self._length.to_bytes(4, 'big')
+        type_byte = str.encode(self._type)
+        crc_byte = self._crc.to_bytes(4, 'big')
+
+        chunk_byte = length_byte + type_byte + self._byte_data + crc_byte
+        return chunk_byte
+
     @property
     def type(self):
         return self._type
 
+    @property
+    def chunk_length(self):
+        return self._length
+
+    @property
+    def byte_data(self):
+        return self._byte_data
+
+    @property
+    def data(self):
+        return self._data
+
+
 
 class PngChunkIHDR(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
-        logging.debug("I am IHDR")
         super().__init__(file)
 
     @property
@@ -134,9 +157,6 @@ class PngChunkIHDR(PngChunk):
         data_dict["interlace_method"] = self.interlace_method
 
 
-
-
-
 class PngChunkIEND(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
@@ -158,6 +178,12 @@ class PngChunkgAMA(PngChunk):
     def _parse_data(self, data_dict: dict):
         data_dict["gamma"] = self.gamma
 
+class PngChunktEXt(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        pass
 
 class PngChunksRGB(PngChunk):
     RENDERING_INTENT_DEF = {
@@ -184,18 +210,6 @@ class PngChunksRGB(PngChunk):
 
     def _parse_data(self, data_dict: dict):
         data_dict["rendering_intent"] = self.rendering_intent_string
-
-
-class PngChunktEXt(PngChunk):
-    def __init__(self, file: io.BufferedReader) -> None:
-        super().__init__(file)
-
-    def _parse_data(self, data_dict: dict):
-        data = self._byte_data.decode().split('\0')
-        data_dict["keyword"] = data[0]
-        data_dict["text"] = data[1]
-        logging.debug("Keyword %s", data[0])
-        logging.debug("Text %s", data[1])
 
 
 
@@ -239,16 +253,43 @@ class PngChunkbKGD(PngChunk):
 
     def _parse_data(self, data_dict: dict):
         palette_index = int.from_bytes(self._byte_data[:1], "big")
-
         data_dict["palette index"] = palette_index
-
-      #  if self.color_type
         logging.debug("White point x = %s", palette_index)
+
+    def decode(self, color_type, data_dict: dict):
+        logging.info("dupa1")
+        if color_type == 0 or color_type == 4:
+            logging.info("dupa2")
+            greyscale = int.from_bytes(self._byte_data[1:2], "big")
+            logging.info("greyscale %s", greyscale)
+            self.data_dict["greyscale"] = greyscale
+
+        if color_type == 2 or color_type == 6:
+            red = int.from_bytes(self._byte_data[1:2], "big")
+            green = int.from_bytes(self._byte_data[3:4], "big")
+            blue = int.from_bytes(self._byte_data[5:6], "big")
+            logging.info("red %s", red)
+            logging.info("green %s", green)
+            logging.info("blue %s", blue)
+
+        if color_type == 3:
+            palette_index = int.from_bytes(self._byte_data[1:1], "big")
+            logging.info("palette_index %s", palette_index)
+
 
 
 # data to filter and compress
-#class PngChunkIDAT(PngChunk):
-#    pass
+class PngChunkIDAT(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        logging.info("Test")
+
+    def decode(self, color_type):
+        # dekodowanie
+        # zapisanie w pamieci
+        logging.info("odkodowywanie danych na podstawie koloru")
 
 
 # 2 byte data series of each frequency
@@ -368,4 +409,3 @@ class PngChunktIME(PngChunk):
 
 # compressed equivalent of tEXt
 # class PngChunkzTXt(PngChunk):
-
