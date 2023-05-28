@@ -51,12 +51,9 @@ class PngFile(object):
         fft = np.fft.fft2(image)
 
         fft_shifted = np.fft.fftshift(fft)
-        fourier_mag = np.asarray(
-            20*np.log10(np.abs(fft_shifted)), dtype=np.uint8)
-        fourier_phase = np.asarray(np.angle(fft_shifted), dtype=np.uint8)
+        fft_phase = np.asarray(np.angle(fft_shifted), dtype=np.uint8)
 
-
-        return (fourier_mag, fourier_phase)
+        return (abs(fft_shifted.transpose()), abs(fft_phase.transpose()))
 
 
     @property
