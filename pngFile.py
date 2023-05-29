@@ -14,7 +14,7 @@ class PngFile(object):
         self.__check_header()
         self.__load_chunks()
         # self._decode_picture()
-        self.get_fft()
+        # self.get_fft()
 
     def _check_color(self):
         res = next((chunk for chunk in self.chunks if chunk.type == "IHDR"), None)
@@ -65,4 +65,5 @@ class PngFile(object):
 
 
 if __name__ == "__main__":
-    test = PngFile("png/land.png")
+    logging.basicConfig(level=logging.DEBUG)
+    test = PngFile("png/histo15.png")

@@ -430,7 +430,7 @@ class PngChunkPLTE(PngChunk):
         green = []
         blue = []
         # dla pętli potrzebny jest dostęp do długości chunka
-        for i in range(14):
+        for i in range(self._length - 2):
             red.append(self._byte_data[i])
             green.append(self._byte_data[i+1])
             blue.append(self._byte_data[i+2])
