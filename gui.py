@@ -207,9 +207,9 @@ class MainWindow(QWidget):
         self._updateImgae(fname[0])
         try:
             self.png_file = PngFile(fname[0])
-        except Exception:
-            QMessageBox.critical(self, "Error", "Error during file encoding")
-            return
+        except Exception as e: print("diiii %s", e)
+           # QMessageBox.critical(self, "Error", "Error during file encoding")
+           # return
 
 
         self.tabwidget.removeTab(2)
