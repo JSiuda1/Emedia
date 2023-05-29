@@ -132,7 +132,7 @@ class MainWindow(QWidget):
         scroll.setWidgetResizable(True)
         return scroll
 
-    def __createPlot(self, title: str, data: tuple):
+    def __createPlot(self, title: str, data):
         graphWidget = pg.PlotWidget()
 
         graphWidget.setLabel("left", "test")
@@ -141,15 +141,15 @@ class MainWindow(QWidget):
         graphWidget.showGrid(True, True, 0.5)
         graphWidget.setBackground((30, 30, 30))
 
-        if title.endswith("Green"):
-            color = (0, 255, 0)
-        elif title.endswith("Blue"):
-            color = (0, 0, 255)
-        else:
-            color = (255, 0, 0)
+        # if title.endswith("Green"):
+        #     color = (0, 255, 0)
+        # elif title.endswith("Blue"):
+        #     color = (0, 0, 255)
+        # else:
+        #     color = (255, 0, 0)
 
-        pen = pg.mkPen(color=color, width = 3)
-        graphWidget.plot(list(data[0]), list(data[1]), pen=pen)
+        # pen = pg.mkPen(color=color, width = 3)
+        graphWidget.plot(data)
 
         return graphWidget
 
@@ -158,8 +158,9 @@ class MainWindow(QWidget):
         plot.setTitle(title)
 
         imv = pg.ImageView(view = plot)
+        imv = pg.ImageView()
         imv.setImage(data)
-
+        print(data)
         imv.ui.histogram.hide()
         imv.ui.roiBtn.hide()
         imv.ui.menuBtn.hide()
@@ -179,9 +180,11 @@ class MainWindow(QWidget):
         else:
             fft_list = self.png_file.get_fft()
             fft_titles = ["FFT maginitude", "FFT phase"]
-            for i, fft_data in enumerate(fft_list):
-                fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
-                formLayout.addWidget(fft_plot_widget)
+            # for i, fft_data in enumerate(fft_list):
+            #     fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
+            #     formLayout.addWidget(fft_plot_widget)
+            fft_plot_widget = self.__createImageFFT("Magnitude", fft_list[0])
+            formLayout.addWidget(fft_plot_widget)
 
         groupBox.setLayout(formLayout)
 
@@ -220,8 +223,8 @@ class MainWindow(QWidget):
         self._updateImgae(fname[0])
         try:
             self.png_file = PngFile(fname[0])
-        except Exception:
-            QMessageBox.critical(self, "Error", "Error during file encoding")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error during file encodinn:\n{str(e)}")
             return
 
 

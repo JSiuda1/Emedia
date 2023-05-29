@@ -47,13 +47,24 @@ class PngFile(object):
             self._chunks.append(PngChunk(self.file))
 
     def get_fft(self):
-        image = cv2.imread(self.path_to_file, 0)
+        image = cv2.imread(self.path_to_file, cv2.IMREAD_GRAYSCALE)
+        print(image.shape)
+        # if len(image.shape) == 3:
+        #     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        #     fft = np.fft.fft2(image)
+        #     fft_shifted = np.fft.fftshift(fft)
+
+        #     fft_mag = np.log10(abs(fft_shifted.transpose()))
+        # else:
         fft = np.fft.fft2(image)
-
         fft_shifted = np.fft.fftshift(fft)
-        fft_phase = np.asarray(np.angle(fft_shifted), dtype=np.uint8)
 
-        return (abs(fft_shifted.transpose()), abs(fft_phase.transpose()))
+        fft_mag = abs(fft_shifted.transpose())
+
+        fft_phase = np.angle(fft_shifted.transpose())
+
+        return (fft_mag, fft_mag)
 
 
     @property
