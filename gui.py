@@ -153,6 +153,19 @@ class MainWindow(QWidget):
 
         return graphWidget
 
+    def __createImageFFT(self, title: str, data):
+        plot = pg.PlotItem()
+        plot.setTitle(title)
+
+        imv = pg.ImageView(view = plot)
+        imv.setImage(data)
+
+        imv.ui.histogram.hide()
+        imv.ui.roiBtn.hide()
+        imv.ui.menuBtn.hide()
+
+        return imv
+
     def _fftLayout(self, png_file : PngFile = None):
         """Create chunks layout"""
         formLayout = QVBoxLayout()
@@ -165,9 +178,9 @@ class MainWindow(QWidget):
             formLayout.addWidget(label)
         else:
             fft_list = self.png_file.get_fft()
-            fft_titles = ["FFT Red", "FFT Green", "FFT Blue"]
+            fft_titles = ["FFT maginitude", "FFT phase"]
             for i, fft_data in enumerate(fft_list):
-                fft_plot_widget = self.__createPlot(fft_titles[i], fft_data)
+                fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
                 formLayout.addWidget(fft_plot_widget)
 
         groupBox.setLayout(formLayout)
