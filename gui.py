@@ -208,11 +208,11 @@ class MainWindow(QWidget):
         else:
             fft_list = self.png_file.get_fft()
             fft_titles = ["FFT maginitude", "FFT phase"]
-            # for i, fft_data in enumerate(fft_list):
-            #     fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
-            #     formLayout.addWidget(fft_plot_widget)
-            fft_plot_widget = self.__createImageFFT("Magnitude", fft_list[0])
-            formLayout.addWidget(fft_plot_widget)
+            for i, fft_data in enumerate(fft_list):
+                fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
+                formLayout.addWidget(fft_plot_widget)
+            # fft_plot_widget = self.__createImageFFT("Magnitude", fft_list[0])
+            # formLayout.addWidget(fft_plot_widget)
 
         groupBox.setLayout(formLayout)
 
