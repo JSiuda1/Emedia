@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QLabel
 from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QVBoxLayout, QScrollArea
 from PyQt6.QtWidgets import QWidget, QTabWidget, QGroupBox, QMessageBox, QCheckBox
 from PyQt6.QtWidgets import QLineEdit, QPushButton, QFileDialog, QTextEdit, QFormLayout
-from PyQt6.QtGui import QCloseEvent ,QPixmap
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import QSize, Qt
 from pngFile import PngFile
 import pyqtgraph as pg
@@ -117,8 +117,38 @@ class MainWindow(QWidget):
                 chunksLayout.addWidget(label)
 
                 for key, value in chunk.data.items():
-                    label = QLabel(f"{key}: {value}")
+                    if key == "Decoded data":
+                        label = QLabel(f"{key}: {str(value)[:40]}...")
+                    else:
+                        label = QLabel(f"{key}: {value}")
                     chunksLayout.addWidget(label)
+
+
+                if chunk.type == "PLTE":
+                    plte_colors = chunk.get_RGB()
+                    print(plte_colors)
+                    for i in range(len(plte_colors[0])):
+                        color = (plte_colors[0][i], plte_colors[1][i], plte_colors[2][i])
+                        label = QLabel(f"{color}")
+                        chunksLayout.addWidget(label)
+                        label = QLabel()
+                        label.setStyleSheet(f"background-color: rgb{color};")
+                        chunksLayout.addWidget(label)
+
+                if chunk.type == "hIST":
+                    test = QVBoxLayout()
+                    histogram = chunk.get_histogram()
+                    plte = png_file.get_chunk("PLTE")
+                    brushes = []
+                    plte_colors = plte.get_RGB()
+                    for i, red in enumerate(plte_colors[0]):
+                        brushes.append((red, plte_colors[1][i], plte_colors[2][i]))
+
+                    # add histogram
+                    plot = pg.plot()
+                    bargraph = pg.BarGraphItem(x =  [i for i in range(len(histogram))], height = histogram, width = 0.6, brushes = brushes)
+                    plot.addItem(bargraph)
+                    chunksLayout.addWidget(plot)
 
                 box.setLayout(chunksLayout)
                 formLayout.addWidget(box)
@@ -179,9 +209,11 @@ class MainWindow(QWidget):
         else:
             fft_list = self.png_file.get_fft()
             fft_titles = ["FFT maginitude", "FFT phase"]
-            for i, fft_data in enumerate(fft_list):
-                fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
-                formLayout.addWidget(fft_plot_widget)
+            # for i, fft_data in enumerate(fft_list):
+            #     fft_plot_widget = self.__createImageFFT(fft_titles[i], fft_data)
+            #     formLayout.addWidget(fft_plot_widget)
+            fft_plot_widget = self.__createImageFFT("Magnitude", fft_list[0])
+            formLayout.addWidget(fft_plot_widget)
 
         groupBox.setLayout(formLayout)
 
@@ -217,12 +249,12 @@ class MainWindow(QWidget):
         self.path_to_file.insert(fname[0])
         logging.info(f"File {fname[0]}")
 
-        self._updateImgae(fname[0])
         try:
             self.png_file = PngFile(fname[0])
         except Exception as e: print("diiii %s", e)
            # QMessageBox.critical(self, "Error", "Error during file encoding")
            # return
+        self._updateImgae(fname[0])
 
 
         self.tabwidget.removeTab(2)

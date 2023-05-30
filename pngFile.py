@@ -46,18 +46,35 @@ class PngFile(object):
         while self._chunks[-1].type != "IEND":
             self._chunks.append(PngChunk(self.file))
 
+    def isgray(self, img):
+        if len(img.shape) < 3: return True
+        if img.shape[2]  == 1: return True
+        b,g,r = img[:,:,0], img[:,:,1], img[:,:,2]
+        if (b==g).all() and (b==r).all(): return True
+        return False
+
+
+
     def get_fft(self):
-        image = cv2.imread(self.path_to_file, 0)
+        image = cv2.imread(self.path_to_file)
         fft = np.fft.fft2(image)
-
         fft_shifted = np.fft.fftshift(fft)
-        fourier_mag = np.asarray(
-            20*np.log10(np.abs(fft_shifted)), dtype=np.uint8)
-        fourier_phase = np.asarray(np.angle(fft_shifted), dtype=np.uint8)
+
+        if self.isgray(image):
+            fft_mag = abs(fft_shifted.transpose())
+        else:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            fft_mag = np.ma.log10(abs(fft_shifted.transpose()))
+
+        fft_phase = np.angle(fft_shifted.transpose())
+
+        return (fft_mag, fft_phase)
 
 
-        return (fourier_mag, fourier_phase)
-
+    def get_chunk(self, name: str):
+        res = next((chunk for chunk in self._chunks if chunk.type == name), None)
+        return res
 
     @property
     def chunks(self):

@@ -188,7 +188,14 @@ class PngChunktEXt(PngChunk):
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        pass
+        textual_data = []
+        textual_data = self._byte_data.split(b'\x00')
+
+        data_dict["Keyword"] = textual_data[0]
+        data_dict["Text string"] = textual_data[1]
+
+        logging.debug("Keyword: %s", textual_data[0])
+        logging.debug("Text string: %s", textual_data[1])
 
 class PngChunksRGB(PngChunk):
     RENDERING_INTENT_DEF = {
@@ -287,16 +294,16 @@ class PngChunkIDAT(PngChunk):
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        logging.info("Test")
-
-
-    def decode(self, color_type):
-        decoded = zlib.decompress(self._byte_data)
-        cursor_1 = 0
-        while cursor_1 < len(decoded):
-            colorIndex = decoded[cursor_1]
-            cursor_1 += 1
-            print("colorIndex: " + str(colorIndex))
+        decoded_bytes = zlib.decompress(self._byte_data)
+        decoded = int.from_bytes(decoded_bytes, "big", signed=True)
+        cursor = 0
+        while cursor < len(decoded_bytes):
+            data = decoded_bytes[cursor]
+            cursor += 1
+            print("data: " + str(data))
+        data_dict["Decoded data"] = decoded
+        logging.debug("Decoded data = %s", decoded)
+    # def decode(self, color_type):
 
 
 
@@ -401,17 +408,17 @@ class PngChunktIME(PngChunk):
 
 # kolejne wystąpienia odpowiadają kolorom z chunka PLTE
 class PngChunkhIST(PngChunk):
-   def __init__(self, file: io.BufferedReader) -> None:
+    def __init__(self, file: io.BufferedReader) -> None:
        super().__init__(file)
 
-   def _parse_data(self, data_dict: dict):
+    def _parse_data(self, data_dict: dict):
 
        # dla pętli potrzebny jest dostęp do długości chunka
-       hist=[]
+        self.hist=[]
 
-       for i in range(20):
-           hist.append(int.from_bytes(self._byte_data[2*i:2*i+2], "big"))
-
+        for i in range(0, self._length, 2):
+           self.hist.append(int.from_bytes(self._byte_data[i: i + 2], "big"))
+        logging.info(self.hist)
        # proba histogramu
        # data_dict["Histogram"] = hist
        # logging.debug("Histogram = %s", hist)
@@ -420,27 +427,33 @@ class PngChunkhIST(PngChunk):
        # plt.xlim([-0.5, 255.5])
        # plt.show()
 
+    def get_histogram(self) -> list:
+       return self.hist
+
+
 
 class PngChunkPLTE(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        red = []
-        green = []
-        blue = []
+        self.red = []
+        self.green = []
+        self.blue = []
         # dla pętli potrzebny jest dostęp do długości chunka
-        for i in range(self._length - 2):
-            red.append(self._byte_data[i])
-            green.append(self._byte_data[i+1])
-            blue.append(self._byte_data[i+2])
-        data_dict["PLTE R"] = red
-        data_dict["PLTE G"] = green
-        data_dict["PLTE B"] = blue
-        logging.debug("PLTE R = %s", red)
-        logging.debug("PLTE G = %s", green)
-        logging.debug("PLTE B = %s", blue)
+        for i in range(0, self._length, 3):
+            self.red.append(self._byte_data[i])
+            self.green.append(self._byte_data[i+1])
+            self.blue.append(self._byte_data[i+2])
+        # data_dict["PLTE R"] = self.red
+        # data_dict["PLTE G"] = self.green
+        # data_dict["PLTE B"] = self.blue
+        logging.debug("PLTE R = %s", self.red)
+        logging.debug("PLTE G = %s", self.green)
+        logging.debug("PLTE B = %s", self.blue)
 
+    def get_RGB(self) -> list:
+        return [self.red, self.green, self.blue]
 
 
 #class PngChunksBIT(PngChunk):
