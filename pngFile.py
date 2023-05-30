@@ -57,7 +57,6 @@ class PngFile(object):
 
 
     def get_fft(self):
-
         fft_log = True
         if self.isgray():
             fft_log = False
@@ -76,7 +75,6 @@ class PngFile(object):
         fft_phase = np.angle(fft_shifted.transpose())
 
         return (fft_mag, fft_phase)
-        # return (image, image)
 
     def get_chunk(self, name: str):
         res = next((chunk for chunk in self._chunks if chunk.type == name), None)
