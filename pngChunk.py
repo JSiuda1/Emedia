@@ -294,15 +294,15 @@ class PngChunkIDAT(PngChunk):
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        decoded_bytes = zlib.decompress(self._byte_data)
-        decoded = int.from_bytes(decoded_bytes, "big", signed=True)
-        cursor = 0
-        while cursor < len(decoded_bytes):
-            data = decoded_bytes[cursor]
-            cursor += 1
-            print("data: " + str(data))
-        data_dict["Decoded data"] = decoded
-        logging.debug("Decoded data = %s", decoded)
+        pass
+        # decoded_bytes = zlib.decompress(self._byte_data)
+        # decoded = int.from_bytes(decoded_bytes, "big", signed=True)
+        # cursor = 0
+        # while cursor < len(decoded_bytes):
+        #     data = decoded_bytes[cursor]
+        #     cursor += 1
+        # data_dict["Decoded data"] = decoded
+        # logging.debug("Decoded data = %s", decoded)
     # def decode(self, color_type):
 
 

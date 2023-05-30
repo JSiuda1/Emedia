@@ -126,7 +126,6 @@ class MainWindow(QWidget):
 
                 if chunk.type == "PLTE":
                     plte_colors = chunk.get_RGB()
-                    print(plte_colors)
                     for i in range(len(plte_colors[0])):
                         color = (plte_colors[0][i], plte_colors[1][i], plte_colors[2][i])
                         label = QLabel(f"{color}")
@@ -249,9 +248,10 @@ class MainWindow(QWidget):
         self.path_to_file.insert(fname[0])
         logging.info(f"File {fname[0]}")
 
-        try:
-            self.png_file = PngFile(fname[0])
-        except Exception as e: print("diiii %s", e)
+        self.png_file = PngFile(fname[0])
+        # try:
+        #     self.png_file = PngFile(fname[0])
+        # except Exception as e: print("diiii %s", e)
            # QMessageBox.critical(self, "Error", "Error during file encoding")
            # return
         self._updateImgae(fname[0])
