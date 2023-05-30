@@ -1,5 +1,10 @@
 import logging
 import io
+import zlib
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 from terminalColors import bcolors
 
 CHUNK_LENGTH_SIZE = 4
@@ -60,24 +65,48 @@ class PngChunk(object):
         logging.debug("Data %s...", data[:40])
         return data
 
-    def __calculate_crc(self):
+    def __calculate_crc(self) -> int:
         """Calculate chunk crc
         """
         crc = int.from_bytes(self._file.read(CHUNK_CRC_SIZE), "big")
         logging.debug("CRC: %d", crc)
+        return crc
 
     def _parse_data(self, data_dict: dict):
         """Parse chunk data"""
         raise NotImplementedError
 
+    def is_critical(self) -> bytes:
+        return self._type[0].isupper()
+
+    def create_chunk(self):
+        length_byte = self._length.to_bytes(4, 'big')
+        type_byte = str.encode(self._type)
+        crc_byte = self._crc.to_bytes(4, 'big')
+
+        chunk_byte = length_byte + type_byte + self._byte_data + crc_byte
+        return chunk_byte
+
     @property
     def type(self):
         return self._type
 
+    @property
+    def chunk_length(self):
+        return self._length
+
+    @property
+    def byte_data(self):
+        return self._byte_data
+
+    @property
+    def data(self):
+        return self._data
+
+
 
 class PngChunkIHDR(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
-        logging.debug("I am IHDR")
         super().__init__(file)
 
     @property
@@ -133,10 +162,6 @@ class PngChunkIHDR(PngChunk):
         data_dict["interlace_method"] = self.interlace_method
 
 
-# class PngChunkIDAT(PngChunk):
-#     pass
-
-
 class PngChunkIEND(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
@@ -163,7 +188,14 @@ class PngChunktEXt(PngChunk):
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        pass
+        textual_data = []
+        textual_data = self._byte_data.split(b'\x00')
+
+        data_dict["Keyword"] = textual_data[0]
+        data_dict["Text string"] = textual_data[1]
+
+        logging.debug("Keyword: %s", textual_data[0])
+        logging.debug("Text string: %s", textual_data[1])
 
 class PngChunksRGB(PngChunk):
     RENDERING_INTENT_DEF = {
@@ -192,13 +224,246 @@ class PngChunksRGB(PngChunk):
         data_dict["rendering_intent"] = self.rendering_intent_string
 
 
-class PngChunktEXt(PngChunk):
+
+class PngChunkcHRM(PngChunk):
     def __init__(self, file: io.BufferedReader) -> None:
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        data = self._byte_data.decode().split('\0')
-        data_dict["keyword"] = data[0]
-        data_dict["text"] = data[1]
-        logging.debug("Keyword %s", data[0])
-        logging.debug("Text %s", data[1])
+        # value times 100000
+        white_point_x = int.from_bytes(self._byte_data[:4], "big")
+        white_point_y = int.from_bytes(self._byte_data[4:8], "big")
+        red_x = int.from_bytes(self._byte_data[8:12], "big")
+        red_y = int.from_bytes(self._byte_data[12:16], "big")
+        green_x = int.from_bytes(self._byte_data[16:20], "big")
+        green_y = int.from_bytes(self._byte_data[20:24], "big")
+        blue_x = int.from_bytes(self._byte_data[24:28], "big")
+        blue_y = int.from_bytes(self._byte_data[28:32], "big")
+
+        data_dict["White point x"] = white_point_x/100000
+        data_dict["White point y"] = white_point_y/100000
+        data_dict["Red x"] = red_x/100000
+        data_dict["Red y"] = red_y/100000
+        data_dict["Green x"] = green_x/100000
+        data_dict["Green y"] = green_y/100000
+        data_dict["Blue x"] = blue_x/100000
+        data_dict["Blue y"] = blue_y/100000
+
+        logging.debug("White point x = %s", white_point_x/100000)
+        logging.debug("White point y = %s", white_point_y / 100000)
+        logging.debug("Red x = %s", red_x / 100000)
+        logging.debug("Red y = %s", red_y / 100000)
+        logging.debug("Green x = %s", green_x / 100000)
+        logging.debug("Green y = %s", green_y / 100000)
+        logging.debug("Blue x = %s", blue_x / 100000)
+        logging.debug("Blue y = %s", blue_y / 100000)
+
+
+class PngChunkbKGD(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        pass
+
+    def decode(self, color_type, data_dict: dict):
+        logging.info("decode1")
+        if color_type == 0 or color_type == 4:
+            logging.info("decode2")
+            greyscale = int.from_bytes(self._byte_data[0:2], "big")
+            logging.info("greyscale %s", greyscale)
+            self.data_dict["greyscale"] = greyscale
+
+        if color_type == 2 or color_type == 6:
+            red = int.from_bytes(self._byte_data[0:2], "big")
+            green = int.from_bytes(self._byte_data[2:4], "big")
+            blue = int.from_bytes(self._byte_data[4:6], "big")
+            logging.info("red %s", red)
+            logging.info("green %s", green)
+            logging.info("blue %s", blue)
+
+        if color_type == 3:
+            palette_index = int.from_bytes(self._byte_data[0:1], "big")
+            logging.info("palette_index %s", palette_index)
+
+
+
+# data to filter and compress
+class PngChunkIDAT(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        pass
+        # decoded_bytes = zlib.decompress(self._byte_data)
+        # decoded = int.from_bytes(decoded_bytes, "big", signed=True)
+        # cursor = 0
+        # while cursor < len(decoded_bytes):
+        #     data = decoded_bytes[cursor]
+        #     cursor += 1
+        # data_dict["Decoded data"] = decoded
+        # logging.debug("Decoded data = %s", decoded)
+    # def decode(self, color_type):
+
+
+
+
+
+# image offset
+class PngChunkoFFs(PngChunk):
+    UNIT_SPECIFIER = {
+        0 : "pixel",
+        1 : "micrometer"
+    }
+
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        position_x = int.from_bytes(self._byte_data[0:4], "big", signed=True)
+        position_y = int.from_bytes(self._byte_data[4:8], "big", signed=True)
+        unit = self._byte_data[8]
+
+        data_dict["Position x"] = position_x
+        data_dict["Position y"] = position_y
+        data_dict["Unit"] = unit
+
+        logging.debug("Position x = %s", position_x)
+        logging.debug("Position y = %s", position_y)
+        logging.debug("Unit is the %s",
+                      self.UNIT_SPECIFIER[unit])
+
+
+class PngChunkpHYs(PngChunk):
+    UNIT_SPECIFIER = {
+        0 : "unknown",
+        1 : "meter"
+    }
+
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+# pixels per unit
+    def _parse_data(self, data_dict: dict):
+        pixels_pu_x = int.from_bytes(self._byte_data[0:4], "big", signed=True)
+        pixels_pu_y = int.from_bytes(self._byte_data[4:8], "big", signed=True)
+        unit = self._byte_data[8]
+
+        data_dict["Position x"] = pixels_pu_x
+        data_dict["Position y"] = pixels_pu_y
+        data_dict["Unit"] = unit
+
+        logging.debug("Position x = %s", pixels_pu_x)
+        logging.debug("Position y = %s", pixels_pu_y)
+        logging.debug("Unit is the %s",
+                      self.UNIT_SPECIFIER[unit])
+
+
+
+class PngChunksTER(PngChunk):
+    LAYOUT_TYPE = {
+        0 : "cross-fuse layout",
+        1 : "diverging-fuse layout"
+    }
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        layout_type = self._byte_data[0]
+
+        data_dict["Layout type"] = layout_type
+
+        logging.debug("Layout type is the %s",
+                      self.LAYOUT_TYPE[layout_type])
+
+
+
+class PngChunktIME(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        year = int.from_bytes(self._byte_data[:2], "big")
+        month = self._byte_data[2]
+        day = self._byte_data[3]
+        hour = self._byte_data[4]
+        minute = self._byte_data[5]
+        second = self._byte_data[6]
+
+        data_dict["year"] = year
+        data_dict["month"] = month
+        data_dict["day"] = day
+        data_dict["hour"] = hour
+        data_dict["minute"] = minute
+        data_dict["second"] = second
+
+        logging.debug("year %s", year)
+        logging.debug("month %s", month)
+        logging.debug("day %s", day)
+        logging.debug("hour %s", hour)
+        logging.debug("minute %s", minute)
+        logging.debug("second %s", second)
+
+
+
+# kolejne wystąpienia odpowiadają kolorom z chunka PLTE
+class PngChunkhIST(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+       super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+
+       # dla pętli potrzebny jest dostęp do długości chunka
+        self.hist=[]
+
+        for i in range(0, self._length, 2):
+           self.hist.append(int.from_bytes(self._byte_data[i: i + 2], "big"))
+        logging.info(self.hist)
+       # proba histogramu
+       # data_dict["Histogram"] = hist
+       # logging.debug("Histogram = %s", hist)
+       # counts, bins = np.histogram(hist, range(257))
+       # plt.bar(bins[:-1] - 0.5, counts, width=1, edgecolor='none')
+       # plt.xlim([-0.5, 255.5])
+       # plt.show()
+
+    def get_histogram(self) -> list:
+       return self.hist
+
+
+
+class PngChunkPLTE(PngChunk):
+    def __init__(self, file: io.BufferedReader) -> None:
+        super().__init__(file)
+
+    def _parse_data(self, data_dict: dict):
+        self.red = []
+        self.green = []
+        self.blue = []
+        # dla pętli potrzebny jest dostęp do długości chunka
+        for i in range(0, self._length, 3):
+            self.red.append(self._byte_data[i])
+            self.green.append(self._byte_data[i+1])
+            self.blue.append(self._byte_data[i+2])
+        # data_dict["PLTE R"] = self.red
+        # data_dict["PLTE G"] = self.green
+        # data_dict["PLTE B"] = self.blue
+        logging.debug("PLTE R = %s", self.red)
+        logging.debug("PLTE G = %s", self.green)
+        logging.debug("PLTE B = %s", self.blue)
+
+    def get_RGB(self) -> list:
+        return [self.red, self.green, self.blue]
+
+
+#class PngChunksBIT(PngChunk):
+
+
+#class PngChunksPLT(PngChunk):
+
+
+#class PngChunktRNS(PngChunk):
+
+
+# compressed equivalent of tEXt
+# class PngChunkzTXt(PngChunk):
