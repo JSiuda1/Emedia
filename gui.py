@@ -189,7 +189,6 @@ class MainWindow(QWidget):
         imv = pg.ImageView(view = plot)
         imv = pg.ImageView()
         imv.setImage(data)
-        print(data)
         imv.ui.histogram.hide()
         imv.ui.roiBtn.hide()
         imv.ui.menuBtn.hide()
