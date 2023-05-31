@@ -308,6 +308,8 @@ class MainWindow(QWidget):
         else:
             self._save_choosen_chunks(file)
 
+        file.write(b"DUPA")
+
         file.close()
 
 

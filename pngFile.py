@@ -46,7 +46,7 @@ class PngFile(object):
         while self._chunks[-1].type != "IEND":
             self._chunks.append(PngChunk(self.file))
 
-    def isgray(self):
+    def __is_gray(self):
         img = cv2.imread(self.path_to_file)
         if len(img.shape) < 3: return True
         if img.shape[2]  == 1: return True
@@ -58,7 +58,7 @@ class PngFile(object):
 
     def get_fft(self):
         fft_log = True
-        if self.isgray():
+        if self.__is_gray():
             fft_log = False
 
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -80,11 +80,61 @@ class PngFile(object):
         res = next((chunk for chunk in self._chunks if chunk.type == name), None)
         return res
 
+    def get_all_data(self):
+        idat_chunks_data = [chunk.byte_data for chunk in self._chunks if chunk.type == "IDAT"]
+        return b''.join(idat_chunks_data)
+
     @property
     def chunks(self):
         return self._chunks
 
+from rsaAlgorithm import AlgorithmRSA
+
+class PngFileCipher(PngFile):
+    def __init__(self, file_path) -> None:
+        super().__init__(file_path)
+        self.data_after_IEND = self.file.read()
+        logging.info(f"After IEND: {self.data_after_IEND}")
+        self.rsa = AlgorithmRSA(256)
+
+    def replace_IDAT(self, data: bytes):
+        data_array = bytearray(data)
+        for chunk in self._chunks:
+            if chunk.type == "IDAT":
+                chunk.set_data(data_array[:chunk.chunk_length])
+                del data_array[:chunk.chunk_length]
+
+
+    def decode_data_ECB(self):
+        self.encrypted_data, self.padding = self.rsa.encrypt_ECB(self.get_all_data())
+        self.replace_IDAT(self.encrypted_data)
+
+    def encode_data_ECB(self):
+        decoded_data = self.rsa.decrypt_ECB(self.get_all_data(), self.data_after_IEND)
+        self.replace_IDAT(decoded_data)
+
+
+    def save_image(self, path_to_save):
+        file = open(path_to_save, "wb")
+        file.write(self.HEADER)
+        for chunk in self._chunks:
+            file.write(chunk.create_chunk())
+        file.write(self.padding)
+
+    def load_new_image(self, file_path):
+        super().__init__(file_path)
+        self.data_after_IEND = self.file.read()
+        logging.info(f"After IEND: {self.data_after_IEND}")
+
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    test = PngFile("png/histo15.png")
+    test = PngFileCipher("png/crab.png")
+    test.get_all_data()
+    test.decode_data_ECB()
+    test.save_image("test.png")
+    test.load_new_image("test.png")
+    test.encode_data_ECB()
+    test.save_image("test2.png")
+

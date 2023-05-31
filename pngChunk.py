@@ -87,6 +87,12 @@ class PngChunk(object):
         chunk_byte = length_byte + type_byte + self._byte_data + crc_byte
         return chunk_byte
 
+    def set_data(self, data: bytes):
+        if len(data) != self._length:
+            raise Exception("DUPA")
+
+        self._byte_data = data
+
     @property
     def type(self):
         return self._type

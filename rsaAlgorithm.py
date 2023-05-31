@@ -96,15 +96,15 @@ class AlgorithmRSA:
         for data_block in chunk_data_blocks:
             if len(data_block) < self._block_size_bytes:
                 padding_size = self._block_size_bytes - len(data_block) + 1 # +1 \x00 padding
-                data_to_encrypt= bytes(padding_data_array[:padding_size] + data_block)
-                logging.info(f"Data to enc {data_to_encrypt}")
+                data_to_decrypt = bytes(padding_data_array[:padding_size] + data_block)
+                logging.info(f"Data to enc {data_to_decrypt}")
                 del padding_data_array[:padding_size]
-                data = self.decrypt_data(data_to_encrypt)
+                data = self.decrypt_data(data_to_decrypt)
                 decrypred_data += data[padding_size:]
             else:
-                data_to_encrypt = padding_data_array[0].to_bytes(1, "big") + data_block
+                data_to_decrypt = padding_data_array[0].to_bytes(1, "big") + data_block
                 del padding_data_array[0]
-                data = self.decrypt_data(data_to_encrypt)
+                data = self.decrypt_data(data_to_decrypt)
                 decrypred_data += data[1:]
 
         return decrypred_data
