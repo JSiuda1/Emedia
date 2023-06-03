@@ -118,20 +118,21 @@ class PngFileCipher(PngFile):
         logging.info(f"After IEND: {self.data_after_IEND}")
         self.rsa = AlgorithmRSA(256)
 
-    def replace_IDAT(self, data: bytes):
-        data_array = bytearray(data)
-        for chunk in self._chunks:
-            if chunk.type == "IDAT":
-                chunk.set_data(data_array[:chunk.chunk_length])
-                del data_array[:chunk.chunk_length]
+    # def replace_IDAT(self, data: bytes):
+    #     data_array = bytearray(data)
+    #     for chunk in self._chunks:
+    #         if chunk.type == "IDAT":
+    #             chunk.set_data(data_array[:chunk.chunk_length])
+    #             del data_array[:chunk.chunk_length]
 
     def save_image(self, path_to_save):
+        self.build_png_from_chunks(path_to_save, self.cipher_data, self.padding)
         # file = open(path_to_save, "wb")
         # file.write(self.HEADER)
         # for chunk in self._chunks:
         #     file.write(chunk.create_chunk())
         # file.write(self.padding)
-        self.build_png_from_chunks(path_to_save, self.cipher_data, self.padding)
+
 
     def load_new_image(self, file_path):
         super().__init__(file_path)
@@ -166,6 +167,17 @@ class PngFileCipher(PngFile):
         self.cipher_data = self.rsa.decrypt_ECB(data, self.data_after_IEND)
         self.padding = b''
         # self.build_png_from_chunks("dupa2.png", self.decrypted_data)
+
+    def decode_decompresed_data_CBC(self):
+        data = self.get_decompersed_data()
+        self.cipher_data, self.padding = self.rsa.encrypt_CBC(data)
+
+    def encode_decompresed_data_CBC(self):
+        data = self.get_decompersed_data()
+        self.cipher_data = self.rsa.decrypt_CBC(data, self.data_after_IEND)
+        self.padding = b''
+        # self.build_png_from_chunks("dupa2.png", self.decrypted_data)
+
 
     def build_png_from_chunks(self, file_name: str, pixels, after_iend_data = b'') -> bool:
         w, l = self.get_image_size()
@@ -248,7 +260,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     test = PngFileCipher("png/crab.png")
     test.decode_decompresed_data_ECB()
-    test.save_image("test123.png")
-    test.load_new_image("test123.png")
+    test.save_image("sz_ecb_dec.png")
+    test.load_new_image("sz_ecb_dec.png")
     test.encode_decompresed_data_ECB()
-    test.save_image("test321.png")
+    test.save_image("sz_ecb_enc.png")
+
+    test.load_new_image("png/crab.png")
+    test.decode_decompresed_data_CBC()
+    test.save_image("sz_cbc_dec.png")
+    test.load_new_image("sz_cbc_dec.png")
+    test.encode_decompresed_data_CBC()
+    test.save_image("sz_cbc_enc.png")
