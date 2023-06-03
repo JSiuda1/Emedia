@@ -89,7 +89,7 @@ class PngChunk(object):
 
     def set_data(self, data: bytes):
         if len(data) != self._length:
-            raise Exception("DUPA")
+            raise Exception("Invalid size of data")
 
         self._byte_data = data
 
@@ -129,19 +129,19 @@ class PngChunkIHDR(PngChunk):
 
     @property
     def bit_depth(self) -> int:
-        bit_depth = self._byte_data[9]
+        bit_depth = self._byte_data[8]
         logging.debug("bit_depth %d", bit_depth)
         return bit_depth
 
     @property
     def color_type(self) -> int:
-        color = self._byte_data[10]
+        color = self._byte_data[9]
         logging.debug("color type %d", color)
         return color
 
     @property
     def compression_method(self) -> int:
-        compression = self._byte_data[11]
+        compression = self._byte_data[10]
         logging.debug("Compression method %d", compression)
         return compression
 
@@ -153,7 +153,7 @@ class PngChunkIHDR(PngChunk):
 
     @property
     def interlace_method(self) -> int:
-        interlace_method = self._byte_data[11]
+        interlace_method = self._byte_data[12]
         logging.debug("Interlace method %d", interlace_method)
         return interlace_method
 
@@ -300,16 +300,21 @@ class PngChunkIDAT(PngChunk):
         super().__init__(file)
 
     def _parse_data(self, data_dict: dict):
-        pass
-        # decoded_bytes = zlib.decompress(self._byte_data)
-        # decoded = int.from_bytes(decoded_bytes, "big", signed=True)
-        # cursor = 0
-        # while cursor < len(decoded_bytes):
-        #     data = decoded_bytes[cursor]
-        #     cursor += 1
-        # data_dict["Decoded data"] = decoded
-        # logging.debug("Decoded data = %s", decoded)
-    # def decode(self, color_type):
+
+        # zobj = zlib.decompressobj()
+        # decoded_bytes = zobj.decompress(self._byte_data)
+        # print("  IDfiltra, piksel 1,   piksel 2,   piksel 3")
+        # decopack = zlib.decompressobj().decompress(self._byte_data, zlib.MAX_WBITS)
+
+        # jesli typ filtra to 0 to jest niefiltrowany
+        # print(decoded_bytes[0])
+        # for i in range(1, len(decoded_bytes)-3, 3):
+        #     print('%17s' % decoded_bytes[i], "  ", '%7s' % decoded_bytes[i+1], "  ", '%7s' % decoded_bytes[i+2])
+
+        decoded_bytes = zlib.decompress(self._byte_data)
+
+        data_dict["Decoded data"] = decoded_bytes
+        logging.debug("Decoded data size = %d", len(decoded_bytes))
 
 
 
