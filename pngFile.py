@@ -96,8 +96,14 @@ class PngFile(object):
             6: 4,
         }
 
-        color_type = self.get_chunk("IHDR").data["color_type"]
+        color_type = self.get_image_color_type()
+        if self.get_image_bit_depth() == 16:
+            raise RuntimeError("Unsupported bit depth")
+
         return color_type_to_bytes[color_type]
+
+    def get_image_color_type(self) -> int:
+        return self.get_chunk("IHDR").data["color_type"]
 
     def get_image_filter_method(self) -> int:
         return self.get_chunk("IHDR").data["filter_method"]
@@ -117,13 +123,6 @@ class PngFileCipher(PngFile):
         self.data_after_IEND = self.file.read()
         logging.info(f"After IEND: {self.data_after_IEND}")
         self.rsa = AlgorithmRSA(256)
-
-    # def replace_IDAT(self, data: bytes):
-    #     data_array = bytearray(data)
-    #     for chunk in self._chunks:
-    #         if chunk.type == "IDAT":
-    #             chunk.set_data(data_array[:chunk.chunk_length])
-    #             del data_array[:chunk.chunk_length]
 
     def save_image(self, path_to_save):
         self.build_png_from_chunks(path_to_save, self.cipher_data, self.padding)
@@ -150,13 +149,11 @@ class PngFileCipher(PngFile):
 
         return self.defilter_data(idat_decompres)
 
-    def decode_data_ECB(self):
-        self.cipher_data, self.padding = self.rsa.encrypt_ECB(self.get_all_data())
-        self.replace_IDAT(self.cipher_data)
+    # def decode_data_ECB(self):
+    #     self.cipher_data, self.padding = self.rsa.encrypt_ECB(self.get_all_data())
 
-    def encode_data_ECB(self):
-        decoded_data = self.rsa.decrypt_ECB(self.get_all_data(), self.data_after_IEND)
-        self.replace_IDAT(decoded_data)
+    # def encode_data_ECB(self):
+    #     self.cipher_data = self.rsa.decrypt_ECB(self.get_all_data(), self.data_after_IEND)
 
     def decode_decompresed_data_ECB(self):
         data = self.get_decompersed_data()
@@ -178,19 +175,38 @@ class PngFileCipher(PngFile):
         self.padding = b''
         # self.build_png_from_chunks("dupa2.png", self.decrypted_data)
 
+    def _get_png_writer(self) -> png.Writer:
+        w, l = self.get_image_size()
+        bit_depth = self.get_image_bit_depth()
+        color_type = self.get_image_color_type()
+        greyscale = True
+        alpha = False
+
+        if color_type == 2:
+            greyscale = False
+            alpha = False
+        elif color_type == 6:
+            greyscale = False
+            alpha = True
+        elif color_type == 0:
+            greyscale = True
+            alpha = False
+
+        return png.Writer(w, l, greyscale = greyscale, alpha = alpha, bitdepth = bit_depth)
 
     def build_png_from_chunks(self, file_name: str, pixels, after_iend_data = b'') -> bool:
         w, l = self.get_image_size()
+        logging.info(f"Width {w}, Length {l}")
         bit_depth = self.get_image_bit_depth()
-        writer = png.Writer(w, l, greyscale=False, bitdepth=bit_depth)
+        writer = self._get_png_writer()
 
         row_width = w * self.get_image_bytes_per_pixel()
         pixels_by_rows = [pixels[i:i+row_width]
                           for i in range(0, len(pixels), row_width)]
 
-        # for row in pixels_by_rows:
-        #     if len(row) < row_width and type(row) == list:
-        #         row.extend([0]*(row_width-len(row)))
+        for row in pixels_by_rows:
+            if len(row) < row_width and type(row) == list:
+                row.extend([0]*(row_width-len(row)))
 
         with open(file_name, 'wb') as f:
             writer.write(f, pixels_by_rows)
@@ -258,14 +274,15 @@ class PngFileCipher(PngFile):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    test = PngFileCipher("png/crab.png")
+    file = "png/test.png"
+    test = PngFileCipher(file)
     test.decode_decompresed_data_ECB()
     test.save_image("sz_ecb_dec.png")
     test.load_new_image("sz_ecb_dec.png")
     test.encode_decompresed_data_ECB()
     test.save_image("sz_ecb_enc.png")
 
-    test.load_new_image("png/crab.png")
+    test.load_new_image(file)
     test.decode_decompresed_data_CBC()
     test.save_image("sz_cbc_dec.png")
     test.load_new_image("sz_cbc_dec.png")
