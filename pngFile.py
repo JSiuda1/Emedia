@@ -224,69 +224,79 @@ class PngFileCipher(PngFile):
             writer.write(f, pixels_by_rows)
             f.write(after_iend_data)
 
+    # left
+    def __left(self, row, column, bpp, bpr, data):
+        if column >= bpp:
+            return data[row * bpr + column - bpp]
+        return 0
+
+    # upper
+    def __upper(self, row, column, bpr, data):
+        if row > 0:
+            return data[(row-1) * bpr + column]
+        return 0
+
+    # upper_left
+    def __upper_left(self, row, column, bpp, bpr, data):
+        return data[(row-1) * bpr + column - bpp] if row > 0 and column >= bpp else 0
+
+
+    def __avrg_floor(self, row, column, bpp, bpr, data):
+        raw = self.__left(row, column, bpp, bpr, data)
+        prior = self.__upper(row, column, bpr, data)
+
+        return (raw + prior) // 2
+
+    def __paeth_predictor(self, row, column, bpp, bpr, data):
+        a = self.__left(row, column, bpp, bpr, data)
+        b = self.__upper(row, column, bpr, data)
+        c = self.__upper_left(row, column, bpp, bpr, data)
+        p = a + b - c
+        pa = abs(p - a)
+        pb = abs(p - b)
+        pc = abs(p - c)
+        if pa <= pb and pa <= pc:
+            return a
+        elif pb <= pc:
+            return b
+        else:
+            return c
+
     def defilter_data(self, data_to_defilter: bytes):
         bytes_per_pixel = self.get_image_bytes_per_pixel()
         width, height = self.get_image_size()
-        stride = width * bytes_per_pixel
+        bpr = width * bytes_per_pixel
 
-        reconstructed_idat_data = b''
-
-        def paeth_predictor(a, b, c):
-            """The Paeth Predictor computes a simple linear function of the three neighboring pixels (left, above, upper left),
-            then chooses as predictor the neighboring pixel closest to the computed value.
-            This technique is due to Alan W. Paeth [1]."""
-            p = a + b - c
-            pa = abs(p - a)
-            pb = abs(p - b)
-            pc = abs(p - c)
-            if pa <= pb and pa <= pc:
-                Pr = a
-            elif pb <= pc:
-                Pr = b
-            else:
-                Pr = c
-            return Pr
-
-        def recon_a(r, c):
-            return reconstructed_idat_data[r * stride + c - bytes_per_pixel] if c >= bytes_per_pixel else 0
-
-        def recon_b(r, c):
-            return reconstructed_idat_data[(r-1) * stride + c] if r > 0 else 0
-
-        def recon_c(r, c):
-            return reconstructed_idat_data[(r-1) * stride + c - bytes_per_pixel] if r > 0 and c >= bytes_per_pixel else 0
+        defiltered_data = b''
 
         i = 0
-        # print(stride * height, len(data_to_defilter))
         for r in range(height):
             filter_type = data_to_defilter[i]
             i += 1
-            for c in range(stride):
+            for c in range(bpr):
                 filt_x = data_to_defilter[i]
                 i += 1
                 if filter_type == 0:  # None
                     recon_x = filt_x
                 elif filter_type == 1:  # Sub
-                    recon_x = filt_x + recon_a(r, c)
+                    recon_x = filt_x + self.__left(r, c, bytes_per_pixel, bpr, defiltered_data)
                 elif filter_type == 2:  # Up
-                    recon_x = filt_x + recon_b(r, c)
+                    recon_x = filt_x + self.__upper(r, c, bpr, defiltered_data)
                 elif filter_type == 3:  # Average
-                    recon_x = filt_x + (recon_a(r, c) + recon_b(r, c)) // 2
+                    recon_x = filt_x + self.__avrg_floor(r, c, bytes_per_pixel, bpr, defiltered_data)
                 elif filter_type == 4:  # Paeth
-                    recon_x = filt_x + \
-                        paeth_predictor(
-                            recon_a(r, c), recon_b(r, c), recon_c(r, c))
+                    recon_x = filt_x + self.__paeth_predictor(r, c, bytes_per_pixel, bpr, defiltered_data)
                 else:
                     raise Exception('Invalid filter type')
-                reconstructed_idat_data += bytes([recon_x & 0xFF])
-                # print(i)
-        return reconstructed_idat_data
+                defiltered_data += bytes([recon_x & 0xFF])
+
+        return defiltered_data
 
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    file = "png/fft_test_2.png"
+    file = "png/test2.png"
     # file = "png/crab.png"
     test = PngFileCipher(file, 256)
     test.decode_decompresed_data_ECB()
