@@ -97,8 +97,12 @@ class PngFile(object):
         }
 
         color_type = self.get_image_color_type()
+        if color_type == 3:
+            raise RuntimeError("PLTE is not supproted")
+
         if self.get_image_bit_depth() == 16:
-            raise RuntimeError("Unsupported bit depth")
+            # raise RuntimeError("Bit depth 16 is not")
+            return color_type_to_bytes[color_type] * 2
 
         return color_type_to_bytes[color_type]
 
@@ -118,11 +122,11 @@ class PngFile(object):
 from rsaAlgorithm import AlgorithmRSA
 
 class PngFileCipher(PngFile):
-    def __init__(self, file_path) -> None:
+    def __init__(self, file_path, key_size) -> None:
         super().__init__(file_path)
         self.data_after_IEND = self.file.read()
         logging.info(f"After IEND: {self.data_after_IEND}")
-        self.rsa = AlgorithmRSA(256)
+        self.rsa = AlgorithmRSA(key_size)
 
     def save_image(self, path_to_save):
         self.build_png_from_chunks(path_to_save, self.cipher_data, self.padding)
@@ -188,6 +192,9 @@ class PngFileCipher(PngFile):
         elif color_type == 6:
             greyscale = False
             alpha = True
+        elif color_type == 4:
+            greyscale = True
+            alpha = True
         elif color_type == 0:
             greyscale = True
             alpha = False
@@ -197,10 +204,15 @@ class PngFileCipher(PngFile):
     def build_png_from_chunks(self, file_name: str, pixels, after_iend_data = b'') -> bool:
         w, l = self.get_image_size()
         logging.info(f"Width {w}, Length {l}")
-        bit_depth = self.get_image_bit_depth()
         writer = self._get_png_writer()
 
-        row_width = w * self.get_image_bytes_per_pixel()
+        if self.get_image_bit_depth() == 16:
+            pixels = [(pixels[i] << 8)+ pixels[i+1] for i in range(0, len(pixels), 2)]
+            logging.info(f"Pixels len {len(pixels)}")
+            row_width = w * self.get_image_bytes_per_pixel() // 2
+        else:
+            row_width = w * self.get_image_bytes_per_pixel()
+
         pixels_by_rows = [pixels[i:i+row_width]
                           for i in range(0, len(pixels), row_width)]
 
@@ -274,8 +286,9 @@ class PngFileCipher(PngFile):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    file = "png/test.png"
-    test = PngFileCipher(file)
+    file = "png/fft_test_2.png"
+    # file = "png/crab.png"
+    test = PngFileCipher(file, 256)
     test.decode_decompresed_data_ECB()
     test.save_image("sz_ecb_dec.png")
     test.load_new_image("sz_ecb_dec.png")
