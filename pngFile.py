@@ -123,10 +123,13 @@ from rsaAlgorithm import AlgorithmRSA
 
 class PngFileCipher(PngFile):
     def __init__(self, file_path, key_size) -> None:
+
         super().__init__(file_path)
         self.data_after_IEND = self.file.read()
         logging.info(f"After IEND: {self.data_after_IEND}")
         self.rsa = AlgorithmRSA(key_size)
+        private_key = self.rsa.private_key
+        print(private_key.n)
 
     def save_image(self, path_to_save):
         self.build_png_from_chunks(path_to_save, self.cipher_data, self.padding)
@@ -161,7 +164,7 @@ class PngFileCipher(PngFile):
 
     def decode_decompresed_data_ECB(self):
         data = self.get_decompersed_data()
-        self.cipher_data, self.padding = self.rsa.encrypt_ECB(data)
+        self.cipher_data, self.padding = self.rsa.encrypt_ECB_v2(data)
 
     def encode_decompresed_data_ECB(self):
         data = self.get_decompersed_data()

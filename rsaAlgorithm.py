@@ -1,5 +1,11 @@
 import sympy
 import logging
+from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+
+
+# from cryptography.hazmat.primitives.ciphers.modes import CBC
+# import pyaes
 
 class PublicKey:
     def __init__(self, n: int, e: int) -> None:
@@ -154,6 +160,32 @@ class AlgorithmRSA:
         for data_block in chunk_data_blocks:
 
             data = self.encrypt_data(data_block)
+
+            if len(data_block) < (self._block_size_bytes):
+                padding_size = self._block_size_bytes - len(data_block) + 1
+                padding_data += data[:padding_size]
+                encrypted_data += data[padding_size:]
+            else:
+                padding_data += data[0].to_bytes(1, "big")
+                encrypted_data += data[1:]
+
+        return encrypted_data, padding_data
+
+
+    def encrypt_ECB_v2(self, chunk_data : bytes) -> tuple[bytes]:
+        encrypted_data = b''
+        padding_data = b''
+
+        chunk_data_blocks = [chunk_data[i:i + self._block_size_bytes] for i in range(0, len(chunk_data), self._block_size_bytes)]
+
+        key = RSA.construct((self._public_key.n, self._public_key.e))
+        # key = self._public_key.n.to_bytes()
+        cipher = AES.new(key.exportKey(format="DER"), AES.MODE_ECB)
+
+        for data_block in chunk_data_blocks:
+
+            data = cipher.encrypt(data_block)
+
 
             if len(data_block) < (self._block_size_bytes):
                 padding_size = self._block_size_bytes - len(data_block) + 1
