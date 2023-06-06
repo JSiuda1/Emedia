@@ -301,7 +301,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     file = "png/test2.png"
     # file = "png/crab.png"
-    test = PngFileCipher(file, 256)
+    test = PngFileCipher(file, 16)
     test.decode_decompresed_data_ECB()
     test.save_image("sz_ecb_dec.png")
     test.load_new_image("sz_ecb_dec.png")

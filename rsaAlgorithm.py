@@ -43,13 +43,13 @@ class AlgorithmRSA:
     def __init__(self, key_size_bits = 2048) -> None:
         self._key_size_bits = key_size_bits
         exp_size = key_size_bits // 2
-        p = sympy.randprime(2**(exp_size), 2**(exp_size + 1)- 1)
-        q = sympy.randprime(2**(exp_size), 2**(exp_size + 1) - 1)
+        p = sympy.randprime(2**(exp_size-1), 2**(exp_size)- 1)
+        q = sympy.randprime(2**(exp_size-1), 2**(exp_size) - 1)
         n = p * q
         phi = (p - 1) * (q - 1)
-        e =  sympy.randprime(2**(exp_size), phi)
+        e =  sympy.randprime(2**(exp_size-1), phi)
         while e < phi and sympy.gcd(e, phi) != 1:
-            e = sympy.randprime(2**(exp_size), phi)
+            e = sympy.randprime(2**(exp_size-1), phi)
 
         d = sympy.mod_inverse(e, phi)
 
@@ -65,6 +65,19 @@ class AlgorithmRSA:
     @property
     def private_key(self) -> PrivateKey:
         return self._private_key
+
+    @property
+    def public_key_bytes(self) -> bytes:
+        exp_size = self._key_size_bits // 2
+        public =  ((self._public_key.n << exp_size) & self._public_key.e).to_bytes(self._key_size_bits, 'big')
+        return public
+
+    @property
+    def private_key_bytes(self) -> bytes:
+        exp_size = self._key_size_bits // 2
+        public =  ((self.private_key.n << exp_size) & self.private_key.d).to_bytes(self._key_size_bits, 'big')
+        return public
+
 
     def encrypt_data(self, data: bytes) -> bytes:
         res: int = pow(int.from_bytes(data, "big"), self._public_key.e, self._public_key.n)
@@ -178,9 +191,9 @@ class AlgorithmRSA:
 
         chunk_data_blocks = [chunk_data[i:i + self._block_size_bytes] for i in range(0, len(chunk_data), self._block_size_bytes)]
 
-        key = RSA.construct((self._public_key.n, self._public_key.e))
-        # key = self._public_key.n.to_bytes()
-        cipher = AES.new(key.exportKey(format="DER"), AES.MODE_ECB)
+        # self.public_key_bytes
+        # key = RSA.construct((self._public_key.n, self._public_key.e))
+        cipher = AES.new(self.public_key_bytes, AES.MODE_ECB)
 
         for data_block in chunk_data_blocks:
 
