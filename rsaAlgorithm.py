@@ -43,13 +43,13 @@ class AlgorithmRSA:
     def __init__(self, key_size_bits = 2048) -> None:
         self._key_size_bits = key_size_bits
         exp_size = key_size_bits // 2
-        p = sympy.randprime(2**(exp_size-1), 2**(exp_size)- 1)
-        q = sympy.randprime(2**(exp_size-1), 2**(exp_size) - 1)
+        p = sympy.randprime(2**(exp_size), 2**(exp_size + 1) - 1)
+        q = sympy.randprime(2**(exp_size), 2**(exp_size + 1) - 1)
         n = p * q
         phi = (p - 1) * (q - 1)
-        e =  sympy.randprime(2**(exp_size-1), phi)
+        e =  sympy.randprime(2**(exp_size), phi)
         while e < phi and sympy.gcd(e, phi) != 1:
-            e = sympy.randprime(2**(exp_size-1), phi)
+            e = sympy.randprime(2**(exp_size), phi)
 
         d = sympy.mod_inverse(e, phi)
 
@@ -69,13 +69,14 @@ class AlgorithmRSA:
     @property
     def public_key_bytes(self) -> bytes:
         exp_size = self._key_size_bits // 2
-        public =  ((self._public_key.n << exp_size) & self._public_key.e).to_bytes(self._key_size_bits, 'big')
+        public =  ((self._public_key.n << exp_size) & self._public_key.e).to_bytes(self._key_size_bits // 8, 'big')
+        logging.info(f"Public key: {public}")
         return public
 
     @property
     def private_key_bytes(self) -> bytes:
         exp_size = self._key_size_bits // 2
-        public =  ((self.private_key.n << exp_size) & self.private_key.d).to_bytes(self._key_size_bits, 'big')
+        public =  ((self.private_key.n << exp_size) & self.private_key.d).to_bytes(self._key_size_bits // 8, 'big')
         return public
 
 
@@ -175,10 +176,12 @@ class AlgorithmRSA:
             data = self.encrypt_data(data_block)
 
             if len(data_block) < (self._block_size_bytes):
+                logging.info("Data block size %d", len(data_block))
                 padding_size = self._block_size_bytes - len(data_block) + 1
                 padding_data += data[:padding_size]
                 encrypted_data += data[padding_size:]
             else:
+                logging.info("Data block size %d", len(data_block))
                 padding_data += data[0].to_bytes(1, "big")
                 encrypted_data += data[1:]
 
@@ -197,16 +200,18 @@ class AlgorithmRSA:
 
         for data_block in chunk_data_blocks:
 
-            data = cipher.encrypt(data_block)
-
-
             if len(data_block) < (self._block_size_bytes):
+                logging.info("Data block size padding %d", len(data_block))
+                data = cipher.encrypt(data_block)
                 padding_size = self._block_size_bytes - len(data_block) + 1
                 padding_data += data[:padding_size]
                 encrypted_data += data[padding_size:]
             else:
-                padding_data += data[0].to_bytes(1, "big")
-                encrypted_data += data[1:]
+                # logging.info("Data block size %d", len(data_block))
+                data = cipher.encrypt(data_block)
+                # padding_data += data[0].to_bytes(1, "big")
+                # encrypted_data += data[1:]
+                encrypted_data += data
 
         return encrypted_data, padding_data
 

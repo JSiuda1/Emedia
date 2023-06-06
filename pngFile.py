@@ -164,6 +164,10 @@ class PngFileCipher(PngFile):
 
     def decode_decompresed_data_ECB(self):
         data = self.get_decompersed_data()
+        self.cipher_data, self.padding = self.rsa.encrypt_ECB(data)
+
+    def decode_decompresed_data_ECBv2(self):
+        data = self.get_decompersed_data()
         self.cipher_data, self.padding = self.rsa.encrypt_ECB_v2(data)
 
     def encode_decompresed_data_ECB(self):
@@ -301,12 +305,15 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     file = "png/test2.png"
     # file = "png/crab.png"
-    test = PngFileCipher(file, 16)
+    test = PngFileCipher(file, 128)
     test.decode_decompresed_data_ECB()
     test.save_image("sz_ecb_dec.png")
     test.load_new_image("sz_ecb_dec.png")
     test.encode_decompresed_data_ECB()
     test.save_image("sz_ecb_enc.png")
+    test.load_new_image(file)
+    test.decode_decompresed_data_ECBv2()
+    test.save_image("test.png")
 
     test.load_new_image(file)
     test.decode_decompresed_data_CBC()
